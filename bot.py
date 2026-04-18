@@ -2,7 +2,7 @@ import os
 import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from anthropic import Anthropic
+from groq import Groq
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import pytz
 
@@ -10,10 +10,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 ASH_TELEGRAM_ID = int(os.environ.get("ASH_TELEGRAM_ID", "6698532921"))
 
-client = Anthropic(api_key=ANTHROPIC_API_KEY)
+client = Groq(api_key=GROQ_API_KEY)
 
 SYSTEM_PROMPT = """You are Ash's personal fitness coach on Telegram. Be concise — this is a chat app, not an essay. 
 Use short paragraphs. Never use excessive bullet points. Be warm, direct, and encouraging without being cheesy.
@@ -106,14 +106,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
         max_tokens=600,
-        system=SYSTEM_PROMPT,
-        messages=conversation_history[user_id]
+        messages=[{"role": "system", "content": SYSTEM_PROMPT}] + conversation_history[user_id]
     )
 
-    reply = response.content[0].text
+    reply = response.choices[0].message.content
     conversation_history[user_id].append({"role": "assistant", "content": reply})
 
     await update.message.reply_text(reply)
